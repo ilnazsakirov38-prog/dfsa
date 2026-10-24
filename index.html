@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Движение Первых: Роли и направления</title>
+
+  <!-- VK Bridge -->
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/vk-bridge.js"></script>
+
+  <style>
+    :root {
+      --primary: #0077FF;
+      --bg: #F5F6F9;
+      --text: #1C1C1E;
+      --white: #FFFFFF;
+      --border: #D1D6DE;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 12px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    h1 { font-size: 24px; margin: 16px 0 24px; text-align: center; }
+    h2 { font-size: 18px; margin-top: 24px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+
+    label { display: block; margin-top: 16px; font-weight: 600; }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-sizing: border-box;
+      font-size: 15px;
+      margin-top: 8px;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:active { opacity: 0.9; }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .role-card {
+      padding: 16px;
+      background: var(--white);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .role-card:active { transform: scale(0.98); }
+
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.3s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .status-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 4px; background: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Движение Первых:<br>Роли и направления</h1>
+
+    <!-- Шаг 1: Опрос -->
+    <div id="step-1" class="section active">
+      <label>Учебное заведение</label>
+      <input type="text" id="school" placeholder="Например: Школа №8" required />
+
+      <label>Город</label>
+      <input type="text" id="city" placeholder="Например: Москва" required />
+
+      <label>Сфера деятельности / интересы</label>
+      <select id="interests">
+        <option value="" disabled selected>Выберите вариант</option>
+        <option value="media">Медиа и коммуникации</option>
+        <option value="volunteer">Волонтёрство и помощь</option>
+        <option value="management">Управление и организация</option>
+        <option value="culture">Творчество и культура</option>
+        <option value="tech">Технологии и цифровые проекты</option>
+      </select>
+
+      <button onclick="nextStep()">Далее →</button>
+    </div>
+
+    <!-- Шаг 2: Рекомендуемые роли -->
+    <div id="step-2" class="section">
+      <h2>Рекомендуемые роли</h2>
+      <p style="color:#555; font-size:14px;">Выберите, что ближе по интересам и сильным сторонам:</p>
+      <div class="roles-grid" id="recommended-roles"></div>
+    </div>
+
+    <!-- Шаг 3: Хочу помогать (организаторские роли) -->
+    <div id="step-3" class="section">
+      <h2>Хочу помогать как организатор</h2>
+      <p style="color:#555; font-size:14px;">Если хотите участвовать в организации мероприятий — выберите направление:</p>
+      <div class="roles-grid" id="organizer-roles"></div>
+    </div>
+
+    <!-- Финиш -->
+    <div id="step-4" class="section">
+      <h2 style="text-align:center;">Готово!</h2>
+      <p style="text-align:center; color:#555;">Ваши предпочтения сохранены.</p>
+      <button onclick="sendToVK()">Отправить данные в VK</button>
+    </div>
+  </div>
+
+  <div class="status-bar"></div>
+
+  <script>
+    // Инициализация VK Bridge
+    vkBridge.send('VKWebAppInit');
+
+    // Роли (статичные — не нужны отдельные файлы)
+    const roles = {
+      recommended: [
+        { id: 'media-participant', title: 'Участник форума (медиа)' },
+        { id: 'volunteer-participant', title: 'Волонтёр на форуме' },
+        { id: 'manager-participant', title: 'Координатор потока' },
+        { id: 'culture-participant', title: 'Творческая группа' }
+      ],
+      organizer: [
+        { id: 'org-logistics', title: 'Логистика и площадка' },
+        { id: 'org-program', title: 'Программа и спикеры' },
+        { id: 'org-media', title: 'Медиа сопровождение' },
+        { id: 'org-volunteers', title: 'Набор волонтёров' }
+      ]
+    };
+
+    function renderRoles(containerId, roleList) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      roleList.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'role-card';
+        card.textContent = r.title;
+        card.onclick = () => toggleRole(r.id, roleList.indexOf(r));
+        container.appendChild(card);
+      });
+    }
+
+    let selectedRoles = [];
+    function toggleRole(id, index) {
+      const isSelected = selectedRoles.includes(id);
+      const card = document.querySelectorAll('.role-card')[index];
+      if (isSelected) {
+        selectedRoles = selectedRoles.filter(x => x !== id);
+        card.style.background = '#fff';
+      } else {
+        selectedRoles.push(id);
+        card.style.background = '#EFF6FF';
+      }
+    }
+
+    function nextStep() {
+      // Простая валидация
+      const school = document.getElementById('school').value.trim();
+      const city = document.getElementById('city').value.trim();
+      const interests = document.getElementById('interests').value;
+
+      if (!school || !city || !interests) {
+        alert('Пожалуйста, заполните все поля.');
+        return;
+      }
+
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      renderRoles('recommended-roles', roles.recommended);
+      document.getElementById('step-2').classList.add('active');
+    }
+
+    function goToOrganizers() {
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      renderRoles('organizer-roles', roles.organizer);
+      document.getElementById('step-3').classList.add('active');
+    }
+
+    function sendToVK() {
+      const data = {
+        school: document.getElementById('school').value,
+        city: document.getElementById('city').value,
+        interests: document.getElementById('interests').value,
+        roles: selectedRoles
+      };
+
+      // Отправляем данные в VK (можно потом сохранить в БД на своей стороне)
+      vkBridge.send('VKWebAppShowSnackbar', { text: 'Данные отправлены!' });
+      console.log('Данные:', data);
+
+      // Здесь можно сделать fetch к своему API, если есть сервер
+      // fetch('https://your-api.com/save', { method: 'POST', body: JSON.stringify(data) })
+
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      document.getElementById('step-4').classList.add('active');
+    }
+
+    // Кнопки перехода между шагами (если нужно)
+    window.goToOrganizers = goToOrganizers;
+    window.sendToVK = sendToVK;
+  </script>
+</body>
+</html>
